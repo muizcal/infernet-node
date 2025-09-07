@@ -4,13 +4,15 @@
 
 The Infernet Node is the off-chain counterpart to the [Infernet SDK](https://github.com/ritual-net/infernet-sdk) from [Ritual](https://ritual.net), responsible for servicing compute workloads and delivering responses to on-chain smart contracts.
 
-Developers can flexibily configure an Infernet Node for both on- and off-chain compute consumption, with extensible and robust parameterization at a per-container level.
+Developers can flexibly configure an Infernet Node for both on- and off-chain compute consumption, with extensible and robust parameterization at a per-container level.
 
-> [!IMPORTANT]
+> [!IMPORTANT]  
 > Infernet Node architecture, quick-start guides, and in-depth documentation can be found on the [Ritual documentation website](https://docs.ritual.net/infernet/node/introduction)
 
-> [!WARNING]
+> [!WARNING]  
 > This software is being provided as is. No guarantee, representation or warranty is being made, express or implied, as to the safety or correctness of the software.
+
+---
 
 ## Configuration
 
@@ -42,28 +44,31 @@ Below is an example configuration showing key fields. Do **not** include real pr
     "docker_socket_path": "/var/run/docker.sock"
   }
 }
+```
 
-Field explanations:
+## Field explanations:
 
-rpc_url — Ethereum-compatible RPC endpoint (Infura, Alchemy, or your node).
+- rpc_url — Ethereum-compatible RPC endpoint (Infura, Alchemy, or your node).
 
-chain_id — Numeric chain ID (1 for mainnet, 5 for Goerli, etc.).
+- chain_id — Numeric chain ID (1 for mainnet, 5 for Goerli, etc.).
 
-registry_contract — Ritual registry contract address for the network.
+- registry_contract — Ritual registry contract address for the network.
 
-wallet_private_key_env — Name of environment variable holding private key.
+- wallet_private_key_env — Name of environment variable holding private key.
 
-models_path — Path to ML models used by the node.
+- models_path — Path to ML models used by the node.
 
-logging.level — info, debug, or error.
+- logging.level — info, debug, or error.
 
-node.bind_address/node.port — HTTP server address and port.
+- node.bind_address/node.port — HTTP server address and port.
 
-docker.use_docker_socket — true uses Docker socket (set false in containerd or alternative environments; see Issue #28).
+- docker.use_docker_socket — true uses Docker socket (set false in containerd or alternative environments; see Issue #28).
 
-Deployment
-Locally via Docker
-# Set tag
+## Deployment
+
+### Locally via Docker
+```bash
+ # Set tag
 tag="1.4.0"
 
 # Build image from source
@@ -76,17 +81,28 @@ cp ../config.sample.json config.json
 
 # Run node and dependencies
 docker compose up -d
-
-Locally via Docker (GPU-enabled)
-
+```
+## Locally via Docker (GPU-enabled)
 The GPU-enabled version of the image comes pre-installed with the NVIDIA CUDA Toolkit
 . Using this image on your GPU-enabled machine enables the node to interact with the attached accelerators for diagnostic and purposes, such as heartbeat checks and utilization reports.
-Locally via Docker (GPU-enabled)
+```bash
+# Set tag
+tag="1.4.0"
 
-The GPU-enabled version of the image comes pre-installed with the NVIDIA CUDA Toolkit
-. Using this image on your GPU-enabled machine enables the node to interact with the attached accelerators for diagnostic and purposes, such as heartbeat checks and utilization reports.
+# Build GPU-enabled image from source
+docker build -f Dockerfile-gpu -t ritualnetwork/infernet-node:$tag-gpu .
 
-Locally via source
+# Configure node
+cd deploy
+cp ../config.sample.json config.json
+# FILL IN config.json #
+
+# Run node and dependencies
+docker compose -f docker-compose-gpu.yaml up -d
+```
+
+## Locally via source
+```bash
 # Create and source new python venv
 python3.11 -m venv env
 source ./env/bin/activate
@@ -101,44 +117,48 @@ cp config.sample.json config.json
 
 # Run node
 make run
-
-Remotely via AWS / GCP
+```
+## Remotely via AWS / GCP
 
 Follow README instructions in the infernet-deploy
  repository.
 
-Troubleshooting
-1. JSON Configuration Errors
+## Troubleshooting
+### 1. JSON Configuration Errors
 
 Symptom: Node fails to start, crashes immediately, or shows a JSON parsing error.
-Fix:
+**Fix:**
+```bash
 python -m json.tool config.json
 # or
 jq . config.json
+```
 
-Ensure required fields are present (rpc_url, wallet_private_key_env, registry_contract, etc.).
+- Ensure required fields are present (rpc_url, wallet_private_key_env, registry_contract, etc.).
 
-Use environment variables for secrets, never hardcode private keys.
+- Use environment variables for secrets, never hardcode private keys.
 
-2. RPC / Contract Call Failures
+### 2. RPC / Contract Call Failures
 
-Symptom: Runtime error like:
+**Symptom**: Runtime error like:
+```bash
 eth_abi.exceptions.InsufficientDataBytes: Tried to read 32 bytes, only got 0 bytes.
+```
 
-Cause: Node could not retrieve data from the chain (empty/invalid contract response).
-Fix:
+**Cause:** Node could not retrieve data from the chain (empty/invalid contract response).
+**Fix:**
 
 Check that rpc_url points to a valid endpoint.
 
 Verify the contract address and ABI match your network.
 
 Ensure chain_id matches your network.
-Reference: Issue #27
+Reference: **Issue #27**
 
-3. Docker-Related Errors
+### 3. Docker-Related Errors
 
-Symptom: Containers fail to build or start.
-Fix:
+**Symptom:** Containers fail to build or start.
+**Fix:**
 
 Docker Engine 24+ and Docker Compose v2+ recommended.
 
@@ -146,24 +166,25 @@ Run docker system prune if image conflicts occur.
 
 For GPU builds, ensure drivers match Docker image CUDA version.
 
-4. GPU / CUDA Issues
+### 4. GPU / CUDA Issues
 
-Symptom: Node cannot detect accelerators or build fails.
-Fix:
+**Symptom:** Node cannot detect accelerators or build fails.
+**Fix:**
 
 Verify NVIDIA driver (nvidia-smi) and CUDA match.
 
 Restart Docker if needed:
 sudo systemctl restart docker
 
-5. Kubernetes / containerd Environments
+### 5. Kubernetes / containerd Environments
 
-Symptom: Node expects /var/run/docker.sock and fails in containerd-only clusters.
-Cause: Docker socket is required for current builds.
-Workarounds: Use Docker runtime or follow cloud deployment guides. See Issue #28
+**Symptom:** Node expects /var/run/docker.sock and fails in containerd-only clusters.
+**Cause:** Docker socket is required for current builds.
+Workarounds: Use Docker runtime or follow cloud deployment guides. See **Issue #28**
 .
 
-Publishing a Docker image
+## Publishing a Docker image
+```bash
 # Set tag
 tag="1.4.0"
 
@@ -172,7 +193,7 @@ make build
 
 # Multi-platform build and push to repo
 make build-multiplatform
-
-License
+```
+## **License**
 
 BSD 3-clause Clear
