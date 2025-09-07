@@ -18,11 +18,51 @@ The Infernet Node operates according to a set of runtime configurations. Most of
 
 For a full list of available configurations, check out our [Node Configuration](https://docs.ritual.net/infernet/node/configuration/v1_3_0) docs.
 
-## Deployment
+### Example Configuration (Annotated)
 
-### Locally via Docker
+Below is an example configuration showing key fields. Do **not** include real private keys — use environment variables instead.
 
-```bash
+```json
+{
+  "rpc_url": "https://YOUR_RPC_PROVIDER.example",
+  "chain_id": 1,
+  "registry_contract": "0x0000000000000000000000000000000000000000",
+  "wallet_private_key_env": "INFERNET_NODE_WALLET_PRIVATE_KEY",
+  "models_path": "/models",
+  "logging": {
+    "level": "info",
+    "file": null
+  },
+  "node": {
+    "bind_address": "0.0.0.0",
+    "port": 8080
+  },
+  "docker": {
+    "use_docker_socket": true,
+    "docker_socket_path": "/var/run/docker.sock"
+  }
+}
+
+Field explanations:
+
+rpc_url — Ethereum-compatible RPC endpoint (Infura, Alchemy, or your node).
+
+chain_id — Numeric chain ID (1 for mainnet, 5 for Goerli, etc.).
+
+registry_contract — Ritual registry contract address for the network.
+
+wallet_private_key_env — Name of environment variable holding private key.
+
+models_path — Path to ML models used by the node.
+
+logging.level — info, debug, or error.
+
+node.bind_address/node.port — HTTP server address and port.
+
+docker.use_docker_socket — true uses Docker socket (set false in containerd or alternative environments; see Issue #28).
+
+Deployment
+Locally via Docker
 # Set tag
 tag="1.4.0"
 
@@ -36,31 +76,17 @@ cp ../config.sample.json config.json
 
 # Run node and dependencies
 docker compose up -d
-```
 
-### Locally via Docker (GPU-enabled)
+Locally via Docker (GPU-enabled)
 
-The GPU-enabled version of the image comes pre-installed with the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit?ref=blog.kobus.me). Using this image on your GPU-enabled machine enables the node to interact with the attached accelerators for diagnostic and purposes, such as heartbeat checks and utilization reports.
+The GPU-enabled version of the image comes pre-installed with the NVIDIA CUDA Toolkit
+. Using this image on your GPU-enabled machine enables the node to interact with the attached accelerators for diagnostic and purposes, such as heartbeat checks and utilization reports.
+Locally via Docker (GPU-enabled)
 
-```bash
-# Set tag
-tag="1.4.0"
+The GPU-enabled version of the image comes pre-installed with the NVIDIA CUDA Toolkit
+. Using this image on your GPU-enabled machine enables the node to interact with the attached accelerators for diagnostic and purposes, such as heartbeat checks and utilization reports.
 
-# Build GPU-enabled image from source
-docker build -f Dockerfile-gpu -t ritualnetwork/infernet-node:$tag-gpu .
-
-# Configure node
-cd deploy
-cp ../config.sample.json config.json
-# FILL IN config.json #
-
-# Run node and dependencies
-docker compose -f docker-compose-gpu.yaml  up -d
-```
-
-### Locally via source
-
-```bash
+Locally via source
 # Create and source new python venv
 python3.11 -m venv env
 source ./env/bin/activate
@@ -75,15 +101,69 @@ cp config.sample.json config.json
 
 # Run node
 make run
-```
 
-### Remotely via AWS / GCP
+Remotely via AWS / GCP
 
-Follow README instructions in the [infernet-deploy](https://github.com/ritual-net/infernet-deploy) repository.
+Follow README instructions in the infernet-deploy
+ repository.
 
-## Publishing a Docker image
+Troubleshooting
+1. JSON Configuration Errors
 
-```bash
+Symptom: Node fails to start, crashes immediately, or shows a JSON parsing error.
+Fix:
+python -m json.tool config.json
+# or
+jq . config.json
+
+Ensure required fields are present (rpc_url, wallet_private_key_env, registry_contract, etc.).
+
+Use environment variables for secrets, never hardcode private keys.
+
+2. RPC / Contract Call Failures
+
+Symptom: Runtime error like:
+eth_abi.exceptions.InsufficientDataBytes: Tried to read 32 bytes, only got 0 bytes.
+
+Cause: Node could not retrieve data from the chain (empty/invalid contract response).
+Fix:
+
+Check that rpc_url points to a valid endpoint.
+
+Verify the contract address and ABI match your network.
+
+Ensure chain_id matches your network.
+Reference: Issue #27
+
+3. Docker-Related Errors
+
+Symptom: Containers fail to build or start.
+Fix:
+
+Docker Engine 24+ and Docker Compose v2+ recommended.
+
+Run docker system prune if image conflicts occur.
+
+For GPU builds, ensure drivers match Docker image CUDA version.
+
+4. GPU / CUDA Issues
+
+Symptom: Node cannot detect accelerators or build fails.
+Fix:
+
+Verify NVIDIA driver (nvidia-smi) and CUDA match.
+
+Restart Docker if needed:
+sudo systemctl restart docker
+
+5. Kubernetes / containerd Environments
+
+Symptom: Node expects /var/run/docker.sock and fails in containerd-only clusters.
+Cause: Docker socket is required for current builds.
+Workarounds: Use Docker runtime or follow cloud deployment guides. See Issue #28
+.
+
+Publishing a Docker image
 # Set tag
 tag="1.4.0"
 
@@ -92,8 +172,7 @@ make build
 
 # Multi-platform build and push to repo
 make build-multiplatform
-```
 
-## License
+License
 
-[BSD 3-clause Clear](./LICENSE)
+BSD 3-clause Clear
